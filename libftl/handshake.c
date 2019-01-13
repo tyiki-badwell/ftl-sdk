@@ -66,7 +66,7 @@ ftl_status_t _init_control_connection(ftl_stream_configuration_private_t *ftl) {
   err = getaddrinfo(ftl->ingest_hostname, ingest_port_str, &hints, &resolved_names);
   if (err != 0) {
     FTL_LOG(ftl, FTL_LOG_ERROR, "getaddrinfo failed to look up ingest address %s.", ftl->ingest_hostname);
-    FTL_LOG(ftl, FTL_LOG_ERROR, "gai error was: %s", gai_strerror(err));
+    FTL_LOG(ftl, FTL_LOG_ERROR, "getaddrinfo error was: %s", gai_strerror(err));
     return FTL_DNS_FAILURE;
   }
 
@@ -376,6 +376,7 @@ static ftl_response_code_t _ftl_send_command(ftl_stream_configuration_private_t 
     }
 
     send(ftl->ingest_socket, buf, len, 0);
+    FTL_LOG(ftl, FTL_LOG_DEBUG, "send[%s]", buf);
 
     if (need_response) {
       resp_code = _ftl_get_response(ftl, response_buf, response_len);

@@ -1,3 +1,4 @@
+#define __FTL_INTERNAL
 #include "ftl.h"
 #include "ftl_private.h"
 #ifndef DISABLE_AUTO_INGEST
@@ -5,7 +6,6 @@
 #include <jansson.h>
 #endif
 
-static int _ingest_lookup_ip(const char *ingest_location, char ***ingest_ip);
 static int _ping_server(const char *ip, int port);
 OS_THREAD_ROUTINE _ingest_get_rtt(void *data);
 
@@ -92,7 +92,7 @@ OS_THREAD_ROUTINE _ingest_get_rtt(void *data) {
     return 0;
 }
 
-ftl_status_t ftl_find_closest_available_ingest(const char* ingestHosts[], int ingestsCount, char* bestIngestHostComputed)
+FTL_API ftl_status_t ftl_find_closest_available_ingest(const char* ingestHosts[], int ingestsCount, char* bestIngestHostComputed)
 {
     if (ingestHosts == NULL || ingestsCount <= 0) {
       return FTL_UNKNOWN_ERROR_CODE;
@@ -250,10 +250,11 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   curl_easy_setopt(curl_handle, CURLOPT_SSL_ENABLE_ALPN, 0);
 #endif
 
+  FTL_LOG(ftl, FTL_LOG_DEBUG, "INGEST_LIST_URI [%s]", INGEST_LIST_URI);
   res = curl_easy_perform(curl_handle);
 
   if (res != CURLE_OK) {
-    printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+    FTL_LOG(ftl, FTL_LOG_ERROR, "curl_easy_perform() failed: %s", curl_easy_strerror(res));
     goto cleanup;
   }
 
@@ -262,6 +263,7 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   }
   
   size_t size = json_array_size(ingests);
+  FTL_LOG(ftl, FTL_LOG_DEBUG, "array size %d", size);
 
   for (i = 0; i < size; i++) {
     char *name = NULL, *ip=NULL, *hostname=NULL;
@@ -279,6 +281,7 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   ingest_elmt->name = _strdup(name);
   ingest_elmt->ip = _strdup(ip);
   ingest_elmt->hostname = _strdup(hostname);
+  FTL_LOG(ftl, FTL_LOG_DEBUG, "ingest_elmt {name:%s, ip:%s, hostname:%s}", ingest_elmt->name, ingest_elmt->ip, ingest_elmt->hostname);
 
     ingest_elmt->rtt = 500;
 
@@ -332,6 +335,7 @@ char * ingest_find_best(ftl_stream_configuration_private_t *ftl) {
   if (_ingest_get_hosts(ftl) <= 0) {
     return NULL;
   }
+  FTL_LOG(ftl, FTL_LOG_INFO, "ingest count %d", ftl->ingest_count);
 
   if ((handle = (OS_THREAD_HANDLE *)malloc(sizeof(OS_THREAD_HANDLE) * ftl->ingest_count)) == NULL) {
     return NULL;
