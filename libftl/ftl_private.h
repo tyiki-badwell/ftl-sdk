@@ -351,6 +351,9 @@ typedef struct {
   status_queue_t status_q;
   ftl_ingest_t *ingest_list;
   int ingest_count;
+#ifndef DISABLE_AUTO_INGEST
+  char *ca_info_path;
+#endif
 }  ftl_stream_configuration_private_t;
 
 struct MemoryStruct {

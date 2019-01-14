@@ -245,6 +245,9 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
   curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "ftlsdk/1.0");
 
+  if (ftl->ca_info_path) {
+    curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ftl->ca_info_path);
+  }
 #if LIBCURL_VERSION_NUM >= 0x072400
   // A lot of servers don't yet support ALPN
   curl_easy_setopt(curl_handle, CURLOPT_SSL_ENABLE_ALPN, 0);
