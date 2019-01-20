@@ -85,6 +85,9 @@ FTL_API ftl_status_t ftl_ingest_create(ftl_handle_t *ftl_handle, ftl_ingest_para
     if (params->ca_info_path != NULL) {
       ftl->ca_info_path = _strdup(params->ca_info_path);
     }
+    if (params->mixer_api_client_id != NULL) {
+      ftl->mixer_api_client_id = _strdup(params->mixer_api_client_id);
+    }
 #endif
 
     /*this is legacy, this isnt used anymore*/
@@ -323,6 +326,9 @@ ftl_status_t internal_ftl_ingest_destroy(ftl_stream_configuration_private_t *ftl
 #ifndef DISABLE_AUTO_INGEST
     if (ftl->ca_info_path != NULL) {
       free(ftl->ca_info_path);
+    }
+    if (ftl->mixer_api_client_id != NULL) {
+      free(ftl->mixer_api_client_id);
     }
 #endif
 

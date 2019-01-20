@@ -225,6 +225,7 @@ static size_t _curl_write_callback(void *contents, size_t size, size_t nmemb, vo
 
 OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   CURL *curl_handle;
+  struct curl_slist *slist = NULL;
   CURLcode res;
   struct MemoryStruct chunk;
   char *query_result = NULL;
@@ -234,8 +235,16 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   json_t *ingests = NULL, *ingest_item = NULL;
 
   curl_handle = curl_easy_init();
+  if (!curl_handle) {
+    FTL_LOG(ftl, FTL_LOG_ERROR, "_ingest_get_hosts:curl_easy_init() failed");
+    goto cleanup;
+  }
 
   chunk.memory = malloc(1);  /* will be grown as needed by realloc */
+  if (!chunk.memory) {
+    FTL_LOG(ftl, FTL_LOG_ERROR, "_ingest_get_hosts:malloc() failed");
+    goto cleanup;
+  }
   chunk.size = 0;    /* no data at this point */
 
   curl_easy_setopt(curl_handle, CURLOPT_URL, INGEST_LIST_URI);
@@ -244,6 +253,7 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, _curl_write_callback);
   curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
   curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "ftlsdk/1.0");
+  curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
 
   if (ftl->ca_info_path) {
     curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ftl->ca_info_path);
@@ -253,15 +263,25 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
   curl_easy_setopt(curl_handle, CURLOPT_SSL_ENABLE_ALPN, 0);
 #endif
 
+  if (ftl->mixer_api_client_id) {
+    const char* cliendIdName = "Client-ID: ";
+    const size_t len = strlen(cliendIdName) + strlen(ftl->mixer_api_client_id) + 1;
+    const char* buf = malloc(len);
+    snprintf(buf, len, "%s%s", cliendIdName, ftl->mixer_api_client_id);
+    slist = curl_slist_append(slist, buf);
+    free(buf);
+    curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, slist);
+  }
   FTL_LOG(ftl, FTL_LOG_DEBUG, "INGEST_LIST_URI [%s]", INGEST_LIST_URI);
   res = curl_easy_perform(curl_handle);
 
   if (res != CURLE_OK) {
-    FTL_LOG(ftl, FTL_LOG_ERROR, "curl_easy_perform() failed: %s", curl_easy_strerror(res));
+    FTL_LOG(ftl, FTL_LOG_ERROR, "_ingest_get_hosts:curl_easy_perform() failed: %s", curl_easy_strerror(res));
     goto cleanup;
   }
 
   if ((ingests = json_loadb(chunk.memory, chunk.size, 0, &error)) == NULL) {
+    FTL_LOG(ftl, FTL_LOG_ERROR, "_ingest_get_hosts:json_loadb() failed");
     goto cleanup;
   }
   
@@ -278,6 +298,7 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
     ftl_ingest_t *ingest_elmt;
 
     if ((ingest_elmt = malloc(sizeof(ftl_ingest_t))) == NULL) {
+      FTL_LOG(ftl, FTL_LOG_ERROR, "_ingest_get_hosts:malloc() failed");
       goto cleanup;
     }
 
@@ -308,6 +329,7 @@ OS_THREAD_ROUTINE _ingest_get_hosts(ftl_stream_configuration_private_t *ftl) {
 cleanup:
   free(chunk.memory);
   curl_easy_cleanup(curl_handle);
+  curl_slist_free_all(slist);
   if (ingests != NULL) {
     json_decref(ingests);
   }

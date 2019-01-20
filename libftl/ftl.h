@@ -157,6 +157,7 @@ typedef struct {
   char const *vendor_version;
 #ifndef DISABLE_AUTO_INGEST
   char const *ca_info_path;
+  char const *mixer_api_client_id;
 #endif
 } ftl_ingest_params_t;
 

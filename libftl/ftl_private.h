@@ -353,6 +353,7 @@ typedef struct {
   int ingest_count;
 #ifndef DISABLE_AUTO_INGEST
   char *ca_info_path;
+  char *mixer_api_client_id;
 #endif
 }  ftl_stream_configuration_private_t;
 
