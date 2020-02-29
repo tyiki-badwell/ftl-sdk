@@ -7,7 +7,6 @@
 #endif
 
 static BOOL _get_chan_id_and_key(const char *stream_key, uint32_t *chan_id, char *key);
-static int _lookup_ingest_ip(const char *ingest_location, char *ingest_ip);
 
 char error_message[1000];
 FTL_API const int FTL_VERSION_MAJOR = 0;
@@ -81,6 +80,15 @@ FTL_API ftl_status_t ftl_ingest_create(ftl_handle_t *ftl_handle, ftl_ingest_para
 
     strncpy_s(ftl->vendor_name, sizeof(ftl->vendor_name) / sizeof(ftl->vendor_name[0]), params->vendor_name, sizeof(ftl->vendor_name) / sizeof(ftl->vendor_name[0]) - 1);
     strncpy_s(ftl->vendor_version, sizeof(ftl->vendor_version) / sizeof(ftl->vendor_version[0]), params->vendor_version, sizeof(ftl->vendor_version) / sizeof(ftl->vendor_version[0]) - 1);
+
+#ifndef DISABLE_AUTO_INGEST
+    if (params->ca_info_path != NULL) {
+      ftl->ca_info_path = _strdup(params->ca_info_path);
+    }
+    if (params->mixer_api_client_id != NULL) {
+      ftl->mixer_api_client_id = _strdup(params->mixer_api_client_id);
+    }
+#endif
 
     /*this is legacy, this isnt used anymore*/
     ftl->video.width = 1280;
@@ -314,6 +322,15 @@ ftl_status_t internal_ftl_ingest_destroy(ftl_stream_configuration_private_t *ftl
     os_semaphore_delete(&ftl->status_q.sem);
 
     ingest_release(ftl);
+
+#ifndef DISABLE_AUTO_INGEST
+    if (ftl->ca_info_path != NULL) {
+      free(ftl->ca_info_path);
+    }
+    if (ftl->mixer_api_client_id != NULL) {
+      free(ftl->mixer_api_client_id);
+    }
+#endif
 
     if (ftl->key != NULL) {
       free(ftl->key);

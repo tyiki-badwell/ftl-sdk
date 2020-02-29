@@ -156,6 +156,10 @@ typedef struct {
   int fps_den;
   char const *vendor_name;
   char const *vendor_version;
+#ifndef DISABLE_AUTO_INGEST
+  char const *ca_info_path;
+  char const *mixer_api_client_id;
+#endif
 } ftl_ingest_params_t;
 
 typedef struct {
