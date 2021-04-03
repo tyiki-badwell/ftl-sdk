@@ -322,13 +322,10 @@ ftl_status_t media_destroy(ftl_stream_configuration_private_t *ftl) {
 static int _nack_init(ftl_media_component_common_t *media) {
 
   int i;
+  memset(&media->nack_slots, 0, sizeof(media->nack_slots));
+
   for (i = 0; i < NACK_RB_SIZE; i++) {
-    if ((media->nack_slots[i] = (nack_slot_t *)malloc(sizeof(nack_slot_t))) == NULL) {
-      return FTL_MALLOC_FAILURE;
-    }
-
-    nack_slot_t *slot = media->nack_slots[i];
-
+    nack_slot_t *slot = &media->nack_slots[i];
     os_init_mutex(&slot->mutex);
 
     slot->len = 0;
@@ -347,11 +344,8 @@ static int _nack_init(ftl_media_component_common_t *media) {
 static int _nack_destroy(ftl_media_component_common_t *media) {
   int i;
   for (i = 0; i < NACK_RB_SIZE; i++) {
-    if (media->nack_slots[i] != NULL) {
-      os_delete_mutex(&media->nack_slots[i]->mutex);
-      free(media->nack_slots[i]);
-      media->nack_slots[i] = NULL;
-    }
+    nack_slot_t* slot = &media->nack_slots[i];
+    os_delete_mutex(&slot->mutex);
   }
   os_delete_mutex(&media->nack_slots_lock);
   return 0;
@@ -805,7 +799,7 @@ static nack_slot_t* _media_get_empty_slot(ftl_stream_configuration_private_t *ft
       slot = NULL;
     }
     else {
-      slot = mc->nack_slots[sn % NACK_RB_SIZE];
+      slot = &mc->nack_slots[sn % NACK_RB_SIZE];
       slot->sn = sn;
     }
 
@@ -864,7 +858,7 @@ static int _media_send_packet(ftl_stream_configuration_private_t *ftl, ftl_media
   {
     os_lock_mutex(&mc->nack_slots_lock);
 
-    slot = mc->nack_slots[mc->xmit_seq_num % NACK_RB_SIZE];
+    slot = &mc->nack_slots[mc->xmit_seq_num % NACK_RB_SIZE];
     mc->xmit_seq_num++;
 
     os_unlock_mutex(&mc->nack_slots_lock);
@@ -914,7 +908,7 @@ static int _nack_resend_packet(ftl_stream_configuration_private_t *ftl, uint32_t
   }
 
   /*map sequence number to slot*/
-  nack_slot_t *slot = mc->nack_slots[sn % NACK_RB_SIZE];
+  nack_slot_t *slot = &mc->nack_slots[sn % NACK_RB_SIZE];
   os_lock_mutex(&slot->mutex);
 
   if (slot->sn != sn) {
